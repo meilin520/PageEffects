@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瀑布流</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        #pinterest {
+            height: auto;
+            background-color: gray;
+        }
+
+        #pinterest div {
+            vertical-align: top;
+            display: inline-block;
+            box-sizing: border-box;
+            height: auto;
+        }
+
+        #pinterest .col>img {
+            width: 100%;
+            vertical-align: top;
+        }
+
+        #pinterest img:hover {
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="pinterest"></div>
+    <script text="text/javascript">
+        // 定义瀑布流类
+        var Pinterest = function (options) {
+            this.baseUrl = options.url;
+            this.target = document.getElementById(options.id);
+            this.minHeightDOM = null; // 最小高度的dom
+            this.sourceImages = []; // 图片源池
+            this.targetImages = []; // 图片渲染目标池
+
+
+            // 初始化图片盒子
+            this.initImagesBox = function () {
+                for (var i = 1; i <= options.imgNum; i++) {
+                    this.sourceImages.push(this.baseUrl + i + '.jpeg')
+                }
+            }
+            // 按图片盒子里的数据，生成随机选择图片
+            this.randomImages = function () {
+                var index = Math.floor(Math.random() * options.imgNum);
+                return this.sourceImages[index];
+            }
+            // 瀑布列划分
+            this.pinterestCol = function (col) {
+                var colWidth = 100 / col; // 列宽百分比
+                for (var i = 0; i < col; i++) {
+                    var div = document.createElement('div');
+                    div.className = 'col';
+                    div.style.width = colWidth + '%';
+                    div.id = 'col' + i;
+                    this.target.appendChild(div);
+                }
+            }
+
+            // 插入图片元素
+            this.insertImages = function () {
+                console.log(document.getElementById('col2').offsetHeight)
+                var img = document.createElement('img');
+                var imgUrl = this.randomImages()
+                img.src = imgUrl;
+                this.isMinHeightCol();
+                this.minHeightDOM.appendChild(img)
+                img.onclick = function (e) {
+                    var url = e.target.src;
+                    window.open(url);
+                }
+            };
+
+            // 判断元素是否为dom节点
+            this.isDomNode = function (obj) {
+                //由于在Chrome,Opera中HTMLElement的类型为function,因此需要做浏览器兼容性判断 
+                var isDOM = false;
+                if (typeof HTMLElement === 'object') {
+                    isDOM = obj instanceof HTMLElement;
+                } else {
+                    isDOM = obj && typeof obj === 'object' && obj.nodeType === 1 && typeof obj.nodeName === 'string';
+                }
+                return isDOM;
+            }
+
+            // 返回高度最小列DOM
+            this.isMinHeightCol = function () {
+                // 获取所有列dom集合
+                var array = document.getElementsByClassName('col');
+                if(array.length){
+                    var arr = [];
+                    for (var i = 0; i < array.length; i++) {
+                        if (this.isDomNode(array[i])) {
+                            arr.push({
+                                dom: array[i],
+                                height: array[i].clientHeight||array[i].offsetHeight
+                            })
+                        }
+                    }
+                    arr = arr.sort(function(a,b){return a.height-b.height})
+                    this.minHeightDOM = arr[0].dom;
+                }
+            }
+
+            // 渲染第一屏数据
+            this.renderFirstScreenImages = function () {
+                var timer = null, that = this;
+                timer = setInterval(function () {
+                    if (that.isOverBodyHeight()) {
+                        clearInterval(timer)
+                    } else {
+                        that.insertImages();
+                    }
+                }, 100)
+            }
+
+            // 当前渲染高度是否大于等于页面可视高度,若是则true，否则false;
+            this.isOverBodyHeight = function () {
+                var body_offsetHeight = document.body.offsetHeight;
+                return this.target.offsetHeight >= body_offsetHeight;
+            }
+
+            // 判断滚动条是否到底部
+            this.isScrollbarToBottom = function () {
+                //变量scrollTop是滚动条滚动时，距离顶部的距离
+                var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                //变量windowHeight是可视区的高度
+                var windowHeight = document.documentElement.clientHeight || document.body.clientHeight;
+                //变量scrollHeight是滚动条的总高度
+                var scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+                //滚动条到底部的条件
+                if (scrollTop + windowHeight == scrollHeight) {
+                    //写后台加载数据的函数
+                    return true;
+                }
+                return false;
+            }
+
+            // 执行开始
+            this.startScroll = function () {
+                console.log('start')
+                var that = this;
+                // 初始化图片盒子
+                this.initImagesBox();
+                // 划分瀑布列
+                this.pinterestCol(options.col);
+                // 初始渲染
+                this.renderFirstScreenImages();
+
+                // 监听滚动事件
+                window.onscroll = function () {
+                    if (that.isScrollbarToBottom()) {
+                        for (var i = 0; i < options.num; i++) {
+                            that.insertImages();
+                        }
+                    }
+                }
+            }
+        }
+        // 配置
+        var options = {
+            id: 'pinterest',
+            url: 'http://127.0.0.1:5500/%E9%A1%B5%E9%9D%A2%E6%95%88%E6%9E%9C/images/OnePiece',
+            col: 5,
+            num: 10,
+            imgNum: 20
+        }
+        // 实例化瀑布流类
+        var pinterest = new Pinterest(options);
+        // 开始
+        pinterest.startScroll();
+
+
+    </script>
+</body>
+
+</html>
